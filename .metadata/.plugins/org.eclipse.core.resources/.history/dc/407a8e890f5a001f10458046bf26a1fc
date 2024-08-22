@@ -1,0 +1,39 @@
+package com.app.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.app.entities.Login;
+import com.app.entities.LoginCheck;
+import com.app.entities.LoginResponse;
+import com.app.services.LoginService;
+
+@CrossOrigin(origins = "http://localhost:3000")
+@RestController
+@RequestMapping("/login")
+public class LoginController {
+
+	@Autowired
+	LoginService  lservice;
+
+	@PostMapping("/checklogin")
+	public ResponseEntity<LoginResponse> chklogin(@RequestBody LoginCheck lcheck) {
+	    Login login = lservice.getLogin(lcheck.getUid(), lcheck.getPwd());
+
+	    if (login != null) {
+	        return ResponseEntity.ok(new LoginResponse(login));
+	    } else {
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse("Invalid credentials. Please try again."));
+	    }
+	}
+
+	
+	
+}
+

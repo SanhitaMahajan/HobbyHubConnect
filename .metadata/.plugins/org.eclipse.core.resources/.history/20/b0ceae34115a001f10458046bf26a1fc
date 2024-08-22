@@ -1,0 +1,9 @@
+package com.app.entities;
+
+@Setter
+@Getter
+@NoArgsConstructor
+public  class JoinRequest {
+    private int groupId;
+    private int userId;
+}

@@ -1,0 +1,90 @@
+package com.app.services;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.app.entities.Group;
+import com.app.entities.User;
+import com.app.repositories.GroupRepository;
+import com.app.repositories.UserRegRepository;
+
+@Service
+public class GroupService {
+	@Autowired
+	GroupRepository groupRepo;
+	
+	@Autowired
+    UserRegRepository userRepository;
+	
+	public Group save(Group group) {
+		return groupRepo.save(group);
+	}
+	
+	public Group groupInfo(int id)
+	{
+		Optional<Group> groupData=groupRepo.findById(id);
+		Group group=null;
+		try
+		{
+			group=groupData.get();
+		}
+		catch(NoSuchElementException e)
+		{
+			group=null;
+		}
+		return group;
+	}
+	
+	@Transactional(readOnly = true)
+	 public List<Group> getGroups() {	
+			
+			return groupRepo.findByIsActive(true);
+		}
+
+	
+	public void deleteGroupById(int id) {
+        Group group = groupRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Group not found with id: " + id));
+
+        // Set isActive to false instead of deleting
+        group.setIsActive(false);
+        groupRepository.save(group);
+    }
+
+	public User getUserById(int userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    
+    public Group getGroupById(int id) {
+        return groupRepo.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public void addUserToGroup(int groupId, int userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupRepo.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
+
+        user.getGroupList().add(group); // Add group to user's list
+        group.getUsers().add(user);     // Add user to group's list
+
+        userRepository.save(user);
+        groupRepo.save(group);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Group> getUserGroups(int userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        return new ArrayList<>(user.getGroupList());
+    }
+	
+	
+}

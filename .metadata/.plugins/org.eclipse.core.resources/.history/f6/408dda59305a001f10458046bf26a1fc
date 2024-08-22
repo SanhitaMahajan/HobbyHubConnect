@@ -1,0 +1,103 @@
+package com.app.services;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.app.entities.Group;
+import com.app.entities.User;
+import com.app.repositories.GroupRepository;
+import com.app.repositories.UserRegRepository;
+
+@Service
+public class GroupService {
+
+    @Autowired
+    GroupRepository groupRepo;
+
+    @Autowired
+    UserRegRepository userRepository;
+
+    public Group save(Group group) {
+        return groupRepo.save(group);
+    }
+
+    public Group groupInfo(int id) {
+        Optional<Group> groupData = groupRepo.findById(id);
+        Group group = null;
+        try {
+            group = groupData.filter(Group::isActive).orElse(null); // Ensure the group is active
+        } catch (NoSuchElementException e) {
+            group = null;
+        }
+        return group;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Group> getGroups() {
+        return groupRepo.findByIsActive(true); // Fetch only active groups
+    }
+
+    @Transactional
+    public void deleteGroupById(int id) {
+        Group group = groupRepo.findById(id)
+            .filter(Group::isActive) // Ensure the group is active
+            .orElseThrow(() -> new RuntimeException("Group not found with id: " + id));
+
+        // Remove the association between the group and all users
+        for (User user : group.getUsers()) {
+            user.getGroupList().remove(group);
+            userRepository.save(user); // Update user records to reflect the change
+        }
+
+        // Clear the group's user list to remove all associations
+        group.getUsers().clear();
+
+        // Set isActive to false instead of deleting
+        group.setActive(false);
+        groupRepo.save(group);
+    }
+
+    public User getUserById(int userId) {
+        return userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public Group getGroupById(int id) {
+        return groupRepo.findById(id)
+            .filter(Group::isActive) // Ensure the group is active
+            .orElse(null);
+    }
+
+    @Transactional
+    public void addUserToGroup(int groupId, int userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupRepo.findById(groupId)
+            .filter(Group::isActive) // Ensure the group is active
+            .orElseThrow(() -> new RuntimeException("Group not found"));
+
+        user.getGroupList().add(group); // Add group to user's list
+        group.getUsers().add(user);     // Add user to group's list
+
+        userRepository.save(user);
+        groupRepo.save(group);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Group> getUserGroups(int userId) {
+        // Find the user by their ID or throw an exception if not found
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return user.getGroupList().stream()
+                .filter(Group::isActive) // Keep only active groups
+                .collect(Collectors.toList());
+    }
+
+}
